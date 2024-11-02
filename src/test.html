@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Upload</title>
+    <style>
+        img {
+            max-width: 500px;
+            margin-top: 20px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Upload an Image for Processing</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="imageInput" name="file" accept="image/*" required>
+        <button type="submit">Upload Image</button>
+    </form>
+
+    <div id="responseContainer">
+        <h3>Response Data</h3>
+        <pre id="responseData"></pre>
+        <h3>Processed Image</h3>
+        <h3>Processed Image with Bounding Boxes</h3>
+        <canvas id="canvas" style="display:none;"></canvas>
+        <img id="processedImage" alt="Processed Image will appear here">
+    </div>
+
+    <script>
+        document.getElementById("uploadForm").onsubmit = async function (event) {
+            event.preventDefault();
+
+            const fileInput = document.getElementById("imageInput").files[0];
+            const formData = new FormData();
+            formData.append("image", fileInput);
+
+            try {
+                const response = await fetch("http://localhost:3000/api/infer/", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                const result = await response.json();
+                console.log(result.data);
+                // Display response data
+                document.getElementById("responseData").innerText = JSON.stringify(result.data, null, 2);
+                
+                
+                
+                // Load the uploaded image into an <img> element
+                const imgElement = document.getElementById("processedImage");
+                imgElement.src = URL.createObjectURL(fileInput);
+                imgElement.onload = () => {
+                    // Draw the image with bounding boxes once it loads
+                    drawBoundingBoxes(imgElement, result.data);
+                };
+            } catch (error) {
+                console.error("Error:", error);
+                alert("There was an error processing the image.");
+            }
+
+            
+        };
+
+        function drawBoundingBoxes(image, boxes) {
+            // Get canvas and set dimensions
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = image.width;
+            canvas.height = image.height;
+
+            // Draw the uploaded image onto the canvas
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+
+            // Verify that boxes is an array before proceeding
+            if (!Array.isArray(boxes)) {
+                console.error("Expected boxes to be an array:", boxes);
+                alert("Bounding box data is not in the expected format.");
+                return;
+            }
+
+            // Loop over each bounding box to draw it
+            boxes.forEach(([x1, y1, x2, y2, label, score]) => {
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+                // Add label and confidence
+                ctx.fillStyle = "red";
+                ctx.font = "14px Arial";
+                const text = `${label} (${(score * 100).toFixed(1)}%)`;
+                ctx.fillText(text, x1, y1 > 10 ? y1 - 5 : 10);
+            });
+
+            // Show the canvas with the bounding boxes
+            canvas.style.display = "block";
+            document.getElementById("processedImage").style.display = "none";
+        }
+    </script>
+</body>
+
+</html>
