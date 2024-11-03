@@ -1,6 +1,6 @@
 // dbRoutes.js
 const express = require('express');
-const operations = require('./queries/dbperations');
+const operations = require('./queries/dbOperations');
 
 const router = express.Router();
 
