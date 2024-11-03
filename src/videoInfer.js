@@ -8,24 +8,27 @@ const multer = require("multer");
 const { createCanvas, loadImage } = require('canvas');
 
 const router = express.Router();
-
-// Set up multer for file uploads
 const upload = multer({ dest: 'src/uploads/' });
+// Set up ffmpeg static path
+ffmpeg.setFfmpegPath(require("ffmpeg-static"));
+
+
 
 const framesDir = path.join(__dirname, 'frames');
+const publicDir = path.join(__dirname, 'public');
+const UPLOAD_DIR = "src/uploads/";
+const FRAME_SKIP = 5; // Process every 5th frame
 
-
+// Ensure directories exist
+if (!fs.existsSync(framesDir)) fs.mkdirSync(framesDir);
+if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir);
 
 // Set up ffmpeg static path
 ffmpeg.setFfmpegPath(require("ffmpeg-static"));
 
-const FRAME_SKIP = 5;  // Process every 5th frame
 
 
-// Video upload directory
-const UPLOAD_DIR = "src/uploads/";
-
-router.post('/', upload.single('video'), (req, res) => {
+router.post('/', upload.single('video'), async (req, res) => {
     
     // Check if file exists
     if (!req.file) {
@@ -34,92 +37,41 @@ router.post('/', upload.single('video'), (req, res) => {
 
 
     const videoPath = path.join(UPLOAD_DIR, req.file.filename);
-    
-    const publicDir = path.join(__dirname, 'public');
+    const outputVideoPath = path.join(publicDir, 'output_with_bboxes.mp4');
 
-    // Create frames directory if it doesn't exist
-    if (!fs.existsSync(framesDir)) {
-        fs.mkdirSync(framesDir);
-    }
 
-    if (!fs.existsSync(publicDir)) {
-        fs.mkdirSync(publicDir);
-    }
+    try {
+        // Extract and annotate frames
+        const results = await extractAndAnnotateFrames(videoPath, framesDir, FRAME_SKIP);
 
-    // Extract frames from video
-    ffmpeg(videoPath)
-        .on('end', async () => {
-            console.log("Frame extraction complete.");
-            const frames = fs.readdirSync(framesDir);
-            const results = [];
-            const annotatedFrames = [];
 
-            for (let i = 0; i < frames.length; i += FRAME_SKIP) {
-                const framePath = path.join(framesDir, frames[i]);
-                try {
-                    const detection = await detect_objects_on_image(framePath);
-                    console.log("detection: ", detection);
-                    results.push({ frame: frames[i], detection });
-
-                    const annotatedFramePath = await annotateFrame(framePath, detection, i);
-                    annotatedFrames.push(annotatedFramePath);
-
-                } catch (error) {
-                    console.error(`Error processing frame ${frames[i]}:`, error);
-                }
+        // Compile annotated frames into a video
+        compileVideoFromFrames(outputVideoPath, (err) => {
+            if (err) {
+                console.error('Error reassembling video:', err);
+                return res.status(500).json({ error: 'Video compilation failed' });
             }
 
-            
-            // Path to save the output video in an accessible location
-            const outputVideoPath = path.join(publicDir, 'output_with_bboxes.mp4');
+            // Send response with video path and detection results
+            res.json({
+                videoPath: outputVideoPath,
+                boundingBoxes: results
+            });
 
-            // Recompile the annotated frames into a video
-            ffmpeg()
-                .input(path.join(framesDir, 'annotated_frame_%04d.png'))
-                .inputFPS(30)
-                .outputFPS(30)
-                .output(outputVideoPath)
-                .on('end', () => {
-                    console.log('Video recompiled successfully.');
-                    // Send the annotated video path and bounding box data in the API response
-                    res.json({
-                        data: 
-                        {
-                            videoPath: outputVideoPath,
-                            boundingBoxes: results
-                        }
-                        
-                    });
+            // Clean up files
+            fs.unlinkSync(videoPath);
+            fs.readdirSync(framesDir).forEach(frame => fs.unlinkSync(path.join(framesDir, frame)));
+        });
 
-                    // Clean up extracted frames after response
-                    frames.forEach(frame => fs.unlinkSync(path.join(framesDir, frame)));
-                    fs.unlinkSync(videoPath);
-                })
-                .on('error', err => {
-                    console.error('Error reassembling video:', err);
-                    res.status(500).json({ error: 'Video reassembly failed' });
-                })
-                .run();
+    } catch (error) {
+        console.error('Error processing video:', error);
+        res.status(500).json({ error: 'Video processing failed' });
+    }
 
 
 
-            // for (const frame of frames) {
-            //     const framePath = path.join(framesDir, frame);
-            //     const detection = await detect_objects_on_image(framePath);
-            //     console.log("detection: ", detection);
-            //     results.push(detection);
-            // }
 
-            
-            
-            
-            
-        })
-        .on('error', err => {
-            console.error('Error processing video:', err);
-            res.status(500).json({ error: 'Video processing failed' });
-        })
-        .save(path.join(framesDir, 'frame_%04d.png')); // Saves each frame
+    
 });
 
 // Object detection function for each frame (reuse infer.js code where possible)
@@ -251,7 +203,81 @@ async function annotateFrame(framePath, detections, frameNumber) {
     const buffer = canvas.toBuffer('image/png');
     fs.writeFileSync(outputFramePath, buffer);
 
-    return outputFramePath;
+    // return outputFramePath;
+}
+
+
+async function extractAndAnnotateFrames(videoPath, framesDir, frameSkip) {
+
+    const results = [];
+
+    await new Promise((resolve, reject) => {
+        ffmpeg(videoPath)
+            .on('end', async () => {
+                console.log("Frame extraction complete.");
+                const frames = fs.readdirSync(framesDir);
+
+                // Process and annotate frames with frame skipping
+                for (let i = 0; i < frames.length; i += frameSkip) {
+                    const framePath = path.join(framesDir, frames[i]);
+                    try {
+                        const detections = await detect_objects_on_image(framePath);
+                        results.push({ frame: frames[i], detections });
+                        await annotateFrame(framePath, detections, i);
+                    } catch (error) {
+                        console.error(`Error processing frame ${frames[i]}:`, error);
+                    }
+                }
+                resolve();
+            })
+            .on('error', err => reject(err))
+            .save(path.join(framesDir, 'frame_%04d.png')); // Saves each frame
+    });
+
+    return results;
+
+}
+
+
+function compileVideoFromFrames(outputVideoPath, callback) {
+
+
+    // Recompile the annotated frames into a video
+    ffmpeg()
+        .input(path.join(framesDir, 'annotated_frame_%04d.png'))
+        .inputFPS(30)
+        .outputFPS(30)
+        .output(outputVideoPath)
+        .on('end', () => {
+            console.log('Video recompiled successfully.');
+            callback(null, outputVideoPath);
+
+
+
+
+
+
+            // Send the annotated video path and bounding box data in the API response
+            // res.json({
+            //     data: 
+            //     {
+            //         videoPath: outputVideoPath,
+            //         boundingBoxes: results
+            //     }
+                
+            // });
+
+
+
+
+            // Clean up extracted frames after response
+            frames.forEach(frame => fs.unlinkSync(path.join(framesDir, frame)));
+            fs.unlinkSync(videoPath);
+        })
+        .on('error', err => callback(err))
+        .run();
+
+
 }
 
 

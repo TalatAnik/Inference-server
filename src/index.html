@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpine.js Sidebar Prototype</title>
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="styles/style.css">
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- External JavaScript -->
+    <script defer src="js/app.js"></script>
+</head>
+
+<body>
+
+    <div x-data="{ currentTab: 1 }" class="main-container">
+
+        <!-- Header -->
+        <header class="header">
+            <h1>App Header</h1>
+        </header>
+
+        <!-- Sidebar and Content -->
+        <div class="content-container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-item" @click="currentTab = 1" :class="{'active': currentTab === 1}">
+                    <span class="material-icons">dashboard</span>
+                    <span>Home</span>
+                </div>
+                <div class="sidebar-item" @click="currentTab = 2" :class="{'active': currentTab === 2}">
+                    <span class="material-icons">backup_table</span>
+                    <span>Journal</span>
+                </div>
+                <div class="sidebar-item" @click="currentTab = 3" :class="{'active': currentTab === 3}">
+                    <span class="material-icons">new_label</span>
+                    <span>+Entry</span>
+                </div>
+                <div class="sidebar-item" @click="currentTab = 4" :class="{'active': currentTab === 4}">
+                    <span class="material-icons">candlestick_chart</span>
+                    <span>Report</span>
+                </div>
+                <div class="sidebar-item" @click="currentTab = 5" :class="{'active': currentTab === 5}">
+                    <span class="material-icons">contact_mail</span>
+                    <span>PoS</span>
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+                <div x-show="currentTab === 1">Home Content</div>
+                <div x-show="currentTab === 2">Journal Content</div>
+                <div x-show="currentTab === 3">Entry Content</div>
+                <div x-show="currentTab === 4">Report Content</div>
+                <div x-show="currentTab === 5">PoS Content</div>
+            </main>
+        </div>
+    </div>
+
+</body>
+
+</html>

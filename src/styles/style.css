@@ -1,0 +1,88 @@
+/* General Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+body, html {
+    height: 100%;
+    background-color: #111313;
+    color: #ffffff;
+}
+
+.main-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Header Styling */
+.header {
+    width: 100%;
+    height: 60px;
+    background-color: #111313;
+    border-bottom: 1px solid #2d3736;
+    display: flex;
+    align-items: center;
+    padding-left: 20px;
+    font-size: 1.5rem;
+}
+
+/* Content Container */
+.content-container {
+    display: flex;
+    flex: 1;
+}
+
+/* Sidebar Styling */
+.sidebar {
+    width: 200px;
+    background-color: #111313;
+    border-right: 1px solid #2d3736;
+    padding-top: 20px;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    margin:5px 10px;
+    cursor: pointer;
+    font-size: 0.8rem; /* Smaller font size */
+    letter-spacing: 0.05em; /* Added letter spacing */
+    color: #ffffff;
+    border-radius: 8px; /* Rounded corners */
+    transition: background-color 0.2s ease, color 0.2s ease;
+    position: relative; /* Required for positioning the chevron */
+}
+
+.sidebar-item span.material-icons {
+    margin-right: 10px;
+}
+
+/* Active Sidebar Item Styling */
+.sidebar-item.active {
+    background-color: #f3b793;
+    border-radius: 8px; /* Rounded corners */
+    color: #111313; /* Darker text color for contrast */
+}
+
+/* Chevron icon on active item */
+.sidebar-item.active::after {
+    content: 'chevron_right'; /* Material Icon name for a right chevron */
+    font-family: 'Material Icons'; /* Required to render Material Icons */
+    font-weight: normal;
+    font-size: 1.2rem;
+    color: #111313; /* Matches the text color */
+    position: absolute;
+    right: 10px; /* Adjust as needed to align chevron */
+}
+
+/* Main Content Styling */
+.main-content {
+    flex: 1;
+    padding: 20px;
+    background-color: #1d2020;
+}
