@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS entries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   timestamp DATETIME NOT NULL,
   product_name TEXT CHECK(product_name IN (
-    '7up_250ml', 'sprite_250ml', 'pepsi_250ml', 'aquafina_500ml', 'kk_medley', 'bottle', 'cup'
+    'seven_up_250ml', 'sprite_250ml', 'pepsi_250ml', 'aquafina_500ml', 'kk_medley', 'bottle', 'cup'
   )) NOT NULL,
   entry_type TEXT CHECK(entry_type IN ('IN', 'OUT')) NOT NULL,
   count INTEGER NOT NULL
